@@ -1,65 +1,55 @@
 let point: number = 0;
 let fail: number = 0;
-let resulting: number = 0;
-class Element {
+let shooting: boolean = false;
+
+class Point {
     x: number
     y: number
-    constructor(x: number, y: number){
-        this.x=x
-        this.y=y
-        led.plot(this.x,this.y)
+    constructor(x: number, y: number) {
+        this.x = x
+        this.y = y
+        led.plot(this.x, this.y)
     }
-    move(x:number,y:number){
-        led.unplot(this.x,this.y)
+    step() {
+        // ez maradjon üresen, csak az örökléshez kell
+        // mert ezt időzítve hívja meg a főprogram
+    }
+    move(x: number, y: number) {
+        // ezt nem érdemes felülírni
+        led.unplot(this.x, this.y)
         this.x += x
         this.y += y
         led.plot(this.x, this.y)
     }
-    run(){}
 }
-class Ship extends Element{
+
+class Ship extends Point {
     target: Target
     bullet: Bullet
-    constructor(trgt:Target) {
-        super(2,4)
+    constructor(trgt: Target) {
+        super(2, 4)
     }
-    shoot(){
-        this.bullet=new Bullet(this.x, this.target);
+    step() {
+        led.plot(this.x, this.y)
+        if (shooting) this.bullet.step()
     }
-    run(){
-        if(this.bullet)this.bullet.run()
+    shoot() {
+        this.bullet = new Bullet(this.x, this.target)
+        shooting = true
     }
 }
 
-class Target extends Element{
-    constructor() {
-        super(0,4)
-    }
-    targetForever() {
-        while (fail != 3) {
-            basic.clearScreen();
-            resulting = 1;
-            this.x = randint(0, 4);
-            led.plot(this.x, 0);
-            while (resulting == 1) {
-                basic.pause(1000);
-            }
-        }
-        basic.showNumber(point);
-    }
-}
-class Bullet extends Element{
+class Bullet extends Point {
     target: Target
-    constructor(x:number, trgt: Target) {
-        super(x,0)
+    constructor(x: number, trgt: Target) {
+        super(x, 4)
         this.target = trgt
-        this.run()
     }
-    run() {
-        this.move(0,-1)
-        if(this.y==0)this.resulting()
+    step() {
+        this.move(0, -1)
+        if (this.y == 0) this.score()
     }
-    resulting() {
+    score() {
         if (target.x == this.x) {
             point += 1
             basic.clearScreen()
@@ -81,32 +71,57 @@ class Bullet extends Element{
             # . . . #
             `)
         }
-        basic.pause(100);
-        resulting = 0;
+        basic.pause(500)
+        target.reset()
+        shooting = false
+        basic.clearScreen()
     }
 }
+
+class Target extends Point {
+    direction: number
+    constructor() {
+        super(randint(0, 4), 0)
+        this.direction = randint(0, 1)
+        if (this.direction == 0) this.direction = -1
+    }
+    step() {
+        this.move(this.direction, 0)
+        if (this.x == 4) this.direction = -1
+        if (this.x == 0) this.direction = 1
+    }
+    reset() {
+        led.unplot(this.x, this.y)
+        this.x = randint(0, 4)
+        if (this.x == 4) this.direction = -1
+        if (this.x == 0) this.direction = 1
+        led.plot(this.x, this.y)
+    }
+}
+
 let target = new Target();
 let ship = new Ship(target);
 
-let elements:Element[]=[]
-elements[0]=target
-elements[1]=ship
+let elements: Point[] = []
+elements[0] = ship
+elements[1] = target
 
+// ez a főprogram, gyakorlatilag az időzítő is egyben
 basic.forever(function () {
-    for(let i=0;i<elements.length;i++){
-        elements[i].run()
+    for (let i = 0; i < elements.length; i++) {
+        elements[i].step()
     }
-    basic.pause(200)
+    basic.pause(300)
 })
 
 input.onButtonPressed(Button.A, function () {
     if (ship.x != 0) {
-        ship.move(-1,0);
+        ship.move(-1, 0);
     }
 })
 input.onButtonPressed(Button.B, function () {
     if (ship.x != 4) {
-        ship.move(1,0);
+        ship.move(1, 0);
     }
 })
 input.onButtonPressed(Button.AB, function () {
